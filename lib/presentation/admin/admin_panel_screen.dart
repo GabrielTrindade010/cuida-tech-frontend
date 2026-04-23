@@ -81,62 +81,71 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: NestedScrollView(
         headerSliverBuilder: (_, __) => [
           SliverAppBar(
-            expandedHeight: 160,
+            expandedHeight: 180,
             pinned: true,
+            elevation: 0,
+            backgroundColor: AppColors.primary,
             actions: const [LogoutButton(color: Colors.white)],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
-                decoration: const BoxDecoration(
-                    gradient: AppColors.primaryGradient),
-                padding: EdgeInsets.only(
-                    top: MediaQuery.of(context).padding.top + 16,
-                    left: 24,
-                    right: 24,
-                    bottom: 16),
+                decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+                padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 20, 24, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Row(children: [
-                      Icon(Icons.admin_panel_settings_rounded,
-                          color: Colors.white, size: 28),
-                      SizedBox(width: 10),
-                      Text('Painel Admin',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold)),
-                    ]),
-                    const SizedBox(height: 6),
-                    Text('${_availabilities.length} oferta(s) · ${_users.length} prestador(es)',
-                        style: const TextStyle(color: Colors.white70)),
+                    const Text(
+                      'Central de Gestão',
+                      style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_availabilities.length} ofertas pendentes · ${_users.length} prestadores',
+                      style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+                    ),
                   ],
                 ),
               ),
             ),
-            bottom: TabBar(
-              controller: _tabController,
-              indicatorColor: AppColors.primaryGreen,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white54,
-              tabs: const [
-                Tab(text: 'Ofertas de Plantão'),
-                Tab(text: 'Prestadores'),
-              ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(48),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorColor: AppColors.secondary,
+                  indicatorWeight: 3,
+                  labelColor: AppColors.primary,
+                  unselectedLabelColor: const Color(0xFF94A3B8),
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  tabs: const [
+                    Tab(text: 'OFERTAS DE SERVIÇO'),
+                    Tab(text: 'PRESTADORES'),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildAvailabilitiesTab(),
-            _buildUsersTab(),
-          ],
+        body: Container(
+          color: Colors.white,
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildAvailabilitiesTab(),
+              _buildUsersTab(),
+            ],
+          ),
         ),
       ),
     );
@@ -145,49 +154,42 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   Widget _buildAvailabilitiesTab() {
     return Column(
       children: [
-        // Filter chips
+        // ── Filter Section ────────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(children: [
-            _FilterChip(
-                label: 'Pendentes',
-                selected: _filter == 'PENDING',
-                color: Colors.orange,
-                onTap: () { setState(() => _filter = 'PENDING'); _loadAvailabilities(); }),
-            const SizedBox(width: 8),
-            _FilterChip(
-                label: 'Aceitas',
-                selected: _filter == 'ACCEPTED',
-                color: AppColors.primaryGreen,
-                onTap: () { setState(() => _filter = 'ACCEPTED'); _loadAvailabilities(); }),
-            const SizedBox(width: 8),
-            _FilterChip(
-                label: 'Recusadas',
-                selected: _filter == 'REJECTED',
-                color: Colors.redAccent,
-                onTap: () { setState(() => _filter = 'REJECTED'); _loadAvailabilities(); }),
-          ]),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              _FilterChip(
+                  label: 'Pendentes',
+                  selected: _filter == 'PENDING',
+                  color: Colors.orange,
+                  onTap: () { setState(() => _filter = 'PENDING'); _loadAvailabilities(); }),
+              const SizedBox(width: 8),
+              _FilterChip(
+                  label: 'Aceitas',
+                  selected: _filter == 'ACCEPTED',
+                  color: AppColors.secondary,
+                  onTap: () { setState(() => _filter = 'ACCEPTED'); _loadAvailabilities(); }),
+              const SizedBox(width: 8),
+              _FilterChip(
+                  label: 'Recusadas',
+                  selected: _filter == 'REJECTED',
+                  color: Colors.redAccent,
+                  onTap: () { setState(() => _filter = 'REJECTED'); _loadAvailabilities(); }),
+            ]),
+          ),
         ),
 
         Expanded(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue))
+              ? const Center(child: CircularProgressIndicator())
               : _availabilities.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.inbox_rounded, size: 64, color: Colors.grey.shade300),
-                          const SizedBox(height: 12),
-                          Text('Nenhuma oferta $_filter',
-                              style: TextStyle(color: Colors.grey.shade500)),
-                        ],
-                      ),
-                    )
+                  ? _buildEmptyState('Nenhuma oferta $_filter')
                   : RefreshIndicator(
                       onRefresh: _loadAvailabilities,
                       child: ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                         itemCount: _availabilities.length,
                         itemBuilder: (_, i) {
                           final a = _availabilities[i];
@@ -197,138 +199,74 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
                           final status = a['status'] ?? '';
 
                           return Container(
-                            margin: const EdgeInsets.only(bottom: 14),
+                            margin: const EdgeInsets.only(bottom: 20),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey.shade100),
-                              boxShadow: [
-                                BoxShadow(
-                                    color: Colors.black.withOpacity(0.04),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2))
-                              ],
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: const Color(0xFFF1F5F9)),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10))],
                             ),
                             child: Padding(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(20),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Header
                                   Row(children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryBlue.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(Icons.person_rounded,
-                                          color: AppColors.primaryBlue, size: 20),
+                                    CircleAvatar(
+                                      backgroundColor: AppColors.primary.withOpacity(0.05),
+                                      radius: 20,
+                                      child: const Icon(Icons.person_outline_rounded, color: AppColors.primary, size: 20),
                                     ),
-                                    const SizedBox(width: 10),
+                                    const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(user['name'] ?? '-',
-                                              style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 15)),
-                                          Text(user['professionalRegister'] ?? 'Sem registro',
-                                              style: const TextStyle(
-                                                  color: AppColors.textSecondary,
-                                                  fontSize: 12)),
+                                          Text(user['name'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                                          Text(user['professionalRegister'] ?? 'Sem registro', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                                         ],
                                       ),
                                     ),
                                     _StatusBadge(status: status),
                                   ]),
-                                  const SizedBox(height: 12),
-                                  const Divider(height: 1),
-                                  const SizedBox(height: 12),
+                                  const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(height: 1, color: Color(0xFFF1F5F9))),
 
-                                  // Turnos
                                   Wrap(
                                     spacing: 6,
                                     runSpacing: 6,
                                     children: shifts.map<Widget>((s) {
                                       return Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 5),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primaryBlue.withOpacity(0.07),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8)),
                                         child: Text(
-                                          '${s['date']}  ${_shiftLabel(s['shiftTime'])}',
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.primaryBlue,
-                                              fontWeight: FontWeight.w500),
+                                          '${s['date']} · ${_shiftLabel(s['shiftTime'])}',
+                                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w700),
                                         ),
                                       );
                                     }).toList(),
                                   ),
 
                                   if (sub != null) ...[
-                                    const SizedBox(height: 10),
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryGreen.withOpacity(0.07),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(children: [
-                                        const Icon(Icons.swap_horiz_rounded,
-                                            color: AppColors.primaryGreen, size: 16),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          'Substituto: ${sub['name']} · ${sub['document']}',
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.primaryGreen,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ]),
-                                    ),
+                                    const SizedBox(height: 12),
+                                    _infoBox('Substituto: ${sub['name']} · ${sub['document']}'),
                                   ],
 
-                                  // Ações (só PENDING)
                                   if (status == 'PENDING') ...[
-                                    const SizedBox(height: 14),
+                                    const SizedBox(height: 20),
                                     Row(children: [
                                       Expanded(
-                                        child: OutlinedButton.icon(
-                                          onPressed: () =>
-                                              _updateStatus(a['id'], 'reject'),
-                                          icon: const Icon(Icons.close_rounded,
-                                              size: 16, color: Colors.redAccent),
-                                          label: const Text('Recusar',
-                                              style: TextStyle(
-                                                  color: Colors.redAccent)),
-                                          style: OutlinedButton.styleFrom(
-                                            side: const BorderSide(
-                                                color: Colors.redAccent),
-                                            shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10)),
-                                          ),
+                                        child: OutlinedButton(
+                                          onPressed: () => _updateStatus(a['id'], 'reject'),
+                                          style: OutlinedButton.styleFrom(foregroundColor: Colors.redAccent, side: const BorderSide(color: Color(0xFFFEE2E2))),
+                                          child: const Text('RECUSAR'),
                                         ),
                                       ),
-                                      const SizedBox(width: 10),
+                                      const SizedBox(width: 12),
                                       Expanded(
-                                        child: ElevatedButton.icon(
-                                          onPressed: () =>
-                                              _updateStatus(a['id'], 'accept'),
-                                          icon: const Icon(Icons.check_rounded,
-                                              size: 16),
-                                          label: const Text('Aceitar'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.primaryGreen,
-                                            shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10)),
-                                          ),
+                                        child: ElevatedButton(
+                                          onPressed: () => _updateStatus(a['id'], 'accept'),
+                                          style: ElevatedButton.styleFrom(backgroundColor: AppColors.secondary),
+                                          child: const Text('ACEITAR'),
                                         ),
                                       ),
                                     ]),
@@ -346,90 +284,65 @@ class _AdminPanelScreenState extends State<AdminPanelScreen>
   }
 
   Widget _buildUsersTab() {
-    if (_isLoadingUsers) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primaryBlue));
-    }
-    if (_users.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.group_off_rounded, size: 64, color: Colors.grey.shade300),
-            const SizedBox(height: 12),
-            Text('Nenhum prestador cadastrado',
-                style: TextStyle(color: Colors.grey.shade500)),
-          ],
-        ),
-      );
-    }
+    if (_isLoadingUsers) return const Center(child: CircularProgressIndicator());
+    if (_users.isEmpty) return _buildEmptyState('Nenhum prestador cadastrado');
+
     return RefreshIndicator(
-            onRefresh: _loadUsers,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _users.length,
-              itemBuilder: (_, i) {
-                final u = _users[i];
-                final isAdmin = u['role'] == 'ADMIN';
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.grey.shade100),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: isAdmin
-                            ? AppColors.primaryBlue.withOpacity(0.1)
-                            : AppColors.primaryGreen.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        isAdmin
-                            ? Icons.admin_panel_settings_rounded
-                            : Icons.person_rounded,
-                        color: isAdmin
-                            ? AppColors.primaryBlue
-                            : AppColors.primaryGreen,
-                        size: 22,
-                      ),
-                    ),
-                    title: Text(u['name'] ?? '-',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(
-                        '${u['email']}\n${u['professionalRegister'] ?? 'Sem registro'}',
-                        style: const TextStyle(fontSize: 12)),
-                    isThreeLine: true,
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isAdmin
-                            ? AppColors.primaryBlue.withOpacity(0.1)
-                            : AppColors.primaryGreen.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        u['role'],
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: isAdmin
-                                ? AppColors.primaryBlue
-                                : AppColors.primaryGreen),
-                      ),
-                    ),
-                  ),
-                );
-              },
+      onRefresh: _loadUsers,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        itemCount: _users.length,
+        itemBuilder: (_, i) {
+          final u = _users[i];
+          final isAdmin = u['role'] == 'ADMIN';
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: CircleAvatar(
+                backgroundColor: isAdmin ? AppColors.primary.withOpacity(0.05) : AppColors.secondary.withOpacity(0.05),
+                child: Icon(isAdmin ? Icons.admin_panel_settings_rounded : Icons.person_outline_rounded, color: isAdmin ? AppColors.primary : AppColors.secondary),
+              ),
+              title: Text(u['name'] ?? '-', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              subtitle: Text('${u['email']}\n${u['professionalRegister'] ?? 'Sem registro'}', style: const TextStyle(fontSize: 12, height: 1.4)),
+              isThreeLine: true,
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: isAdmin ? AppColors.primary.withOpacity(0.1) : AppColors.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                child: Text(u['role'], style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isAdmin ? AppColors.primary : AppColors.secondary)),
+              ),
             ),
           );
+        },
+      ),
+    );
   }
+
+  Widget _buildEmptyState(String msg) => Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.inbox_rounded, size: 48, color: Colors.grey.shade200),
+        const SizedBox(height: 16),
+        Text(msg, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+      ],
+    ),
+  );
+
+  Widget _infoBox(String text) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFF1F5F9))),
+    child: Row(children: [
+      const Icon(Icons.info_outline_rounded, color: Color(0xFF64748B), size: 16),
+      const SizedBox(width: 8),
+      Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.w600))),
+    ]),
+  );
 }
 
 class _FilterChip extends StatelessWidget {
@@ -438,28 +351,25 @@ class _FilterChip extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _FilterChip(
-      {required this.label,
-      required this.selected,
-      required this.color,
-      required this.onTap});
+  const _FilterChip({required this.label, required this.selected, required this.color, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? color : color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(20),
+          color: selected ? color : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: selected ? color : const Color(0xFFE2E8F0)),
+          boxShadow: selected ? [BoxShadow(color: color.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))] : [],
         ),
-        child: Text(label,
-            style: TextStyle(
-                color: selected ? Colors.white : color,
-                fontSize: 13,
-                fontWeight: FontWeight.bold)),
+        child: Text(
+          label.toUpperCase(),
+          style: TextStyle(color: selected ? Colors.white : const Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+        ),
       ),
     );
   }
@@ -472,22 +382,16 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Map<String, dynamic> map = {
-      'PENDING': {'label': 'Pendente', 'color': Colors.orange},
-      'ACCEPTED': {'label': 'Aceita', 'color': AppColors.primaryGreen},
-      'REJECTED': {'label': 'Recusada', 'color': Colors.redAccent},
+      'PENDING': {'label': 'PENDENTE', 'color': Colors.orange},
+      'ACCEPTED': {'label': 'ACEITA', 'color': AppColors.secondary},
+      'REJECTED': {'label': 'RECUSADA', 'color': Colors.redAccent},
     };
     final data = map[status] ?? {'label': status, 'color': Colors.grey};
+    final color = data['color'] as Color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: (data['color'] as Color).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(data['label'],
-          style: TextStyle(
-              color: data['color'] as Color,
-              fontSize: 12,
-              fontWeight: FontWeight.bold)),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+      child: Text(data['label'], style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
     );
   }
 }

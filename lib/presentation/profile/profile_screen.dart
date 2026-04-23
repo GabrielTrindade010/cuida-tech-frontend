@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/auth_gate.dart';
+import '../availability/my_offers_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -41,22 +43,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Sair da conta'),
-        content: const Text('Tem certeza que deseja encerrar sua sessão?'),
+        title: const Text('Encerrar Sessão?'),
+        content: const Text('Você precisará entrar novamente para acessar seus plantões.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
               context.read<AuthProvider>().logout();
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const AuthGate()),
-                (route) => false,
-              );
+              Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const AuthGate()), (r) => false);
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             child: const Text('Sair'),
@@ -68,135 +63,130 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
+          // ── Premium Header ────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Container(
               decoration: const BoxDecoration(
                 gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(32),
-                  bottomRight: Radius.circular(32),
-                ),
+                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(40)),
               ),
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 32,
-                bottom: 40,
-              ),
+              padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 20, 24, 40),
               child: Column(
                 children: [
-                  Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 3),
-                    ),
-                    child: const Icon(Icons.person, color: Colors.white, size: 48),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _userName.isEmpty ? 'Carregando...' : _userName,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _userEmail,
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _userRole == 'ADMIN' ? '👑 Administrador' : '🩺 Prestador Autônomo',
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+                        ),
+                        child: const Center(child: Icon(Icons.person_outline_rounded, color: Colors.white, size: 40)),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_userName, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800)),
+                            Text(_userEmail, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14)),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(100)),
+                              child: Text(
+                                _userRole == 'ADMIN' ? 'ADMINISTRADOR' : 'PRESTADOR ATIVO',
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+
+          // ── Menu Content ──────────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Minha Conta', style: Theme.of(context).textTheme.titleLarge),
+                  Text('Gerenciamento', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 16),
-                  _buildMenuCard(context, [
+                  _buildMenuCard([
                     _MenuItem(
-                      icon: Icons.gavel_rounded,
-                      iconColor: AppColors.primaryBlue,
-                      label: 'Contrato Assinado',
-                      subtitle: 'v1.0.0 · Vigente',
+                      icon: Icons.assignment_turned_in_outlined,
+                      label: 'Termo de Adesão',
+                      subtitle: 'Contrato legal e autonomia',
+                      color: AppColors.primary,
                       onTap: () {},
                     ),
                     _MenuItem(
-                      icon: Icons.history_rounded,
-                      iconColor: AppColors.primaryGreen,
-                      label: 'Histórico de Ofertas',
-                      subtitle: 'Ver todos os plantões enviados',
-                      onTap: () {},
+                      icon: Icons.history_edu_rounded,
+                      label: 'Histórico de Atividades',
+                      subtitle: 'Registros de plantões ofertados',
+                      color: AppColors.accent,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyOffersScreen())),
                     ),
                     _MenuItem(
-                      icon: Icons.notifications_outlined,
-                      iconColor: Colors.orange,
+                      icon: Icons.notifications_none_rounded,
                       label: 'Notificações',
-                      subtitle: 'Preferências de aviso',
+                      subtitle: 'Preferências de comunicação',
+                      color: Colors.orange,
                       onTap: () {},
                     ),
                   ]),
 
-                  const SizedBox(height: 20),
-                  Text('Sistema', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 32),
+                  Text('Suporte', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 16),
-                  _buildMenuCard(context, [
+                  _buildMenuCard([
                     _MenuItem(
                       icon: Icons.help_outline_rounded,
-                      iconColor: Colors.blueGrey,
-                      label: 'Ajuda e Suporte',
-                      subtitle: 'Tire suas dúvidas',
-                      onTap: () {},
+                      label: 'Central de Ajuda',
+                      subtitle: 'Fale conosco via WhatsApp',
+                      color: AppColors.secondary,
+                      onTap: () async {
+                        final url = Uri.parse('whatsapp://send?phone=+5511999999999&text=Olá, preciso de ajuda com o app Cuida Tech.');
+                        if (await canLaunchUrl(url)) await launchUrl(url);
+                      },
                     ),
                     _MenuItem(
                       icon: Icons.info_outline_rounded,
-                      iconColor: Colors.blueGrey,
-                      label: 'Sobre o App',
-                      subtitle: 'Cuida Tech v1.0.0',
+                      label: 'Sobre o Aplicativo',
+                      subtitle: 'Versão 1.0.0 (Premium Build)',
+                      color: const Color(0xFF64748B),
                       onTap: () {},
                     ),
                   ]),
 
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _confirmLogout,
-                      icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-                      label: const Text('Sair da conta',
-                          style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: Colors.redAccent),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                      ),
+                  const SizedBox(height: 40),
+                  ElevatedButton.icon(
+                    onPressed: _confirmLogout,
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('ENCERRAR SESSÃO'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.redAccent,
+                      side: const BorderSide(color: Color(0xFFFEE2E2)),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -206,41 +196,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuCard(BuildContext context, List<_MenuItem> items) {
+  Widget _buildMenuCard(List<_MenuItem> items) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))
-        ],
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
-        children: items.asMap().entries.map((entry) {
-          final i = entry.key;
-          final item = entry.value;
+        children: items.asMap().entries.map((e) {
+          final i = e.key;
+          final item = e.value;
           return Column(
             children: [
               ListTile(
                 onTap: item.onTap,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: item.iconColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(item.icon, color: item.iconColor, size: 20),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: item.color.withOpacity(0.08), borderRadius: BorderRadius.circular(16)),
+                  child: Icon(item.icon, color: item.color, size: 22),
                 ),
-                title: Text(item.label,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                subtitle: Text(item.subtitle,
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                trailing: const Icon(Icons.arrow_forward_ios_rounded,
-                    size: 14, color: AppColors.textSecondary),
+                title: Text(item.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary)),
+                subtitle: Text(item.subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1), size: 20),
               ),
-              if (i < items.length - 1)
-                Divider(height: 1, indent: 56, color: Colors.grey.shade100),
+              if (i < items.length - 1) Divider(height: 1, indent: 76, color: Colors.grey.shade50),
             ],
           );
         }).toList(),
@@ -251,16 +233,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 class _MenuItem {
   final IconData icon;
-  final Color iconColor;
   final String label;
   final String subtitle;
+  final Color color;
   final VoidCallback onTap;
-
-  _MenuItem({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.subtitle,
-    required this.onTap,
-  });
+  _MenuItem({required this.icon, required this.label, required this.subtitle, required this.color, required this.onTap});
 }

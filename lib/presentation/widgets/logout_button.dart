@@ -13,13 +13,12 @@ class LogoutButton extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Sair da conta'),
-        content: const Text('Tem certeza que deseja encerrar sua sessão?'),
+        title: const Text('Encerrar Sessão?'),
+        content: const Text('Você precisará entrar novamente para acessar seus plantões e agenda.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            child: const Text('CANCELAR'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -30,8 +29,11 @@ class LogoutButton extends StatelessWidget {
                 (route) => false,
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            child: const Text('Sair'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('SAIR'),
           ),
         ],
       ),

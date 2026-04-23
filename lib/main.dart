@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/api/dio_client.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
@@ -14,12 +16,16 @@ import 'presentation/contract/contract_gate_screen.dart';
 import 'presentation/shell/main_shell.dart';
 import 'presentation/admin/admin_panel_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('pt_BR', null);
+  Intl.defaultLocale = 'pt_BR';
+  
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
   ));
+  
   DioClient.setupInterceptors();
   runApp(const CuidaTechApp());
 }

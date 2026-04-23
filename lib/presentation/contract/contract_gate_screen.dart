@@ -20,6 +20,7 @@ class _ContractGateScreenState extends State<ContractGateScreen> {
     penColor: Colors.black,
     exportBackgroundColor: Colors.white,
   );
+  final ScrollController _contractScrollController = ScrollController();
 
   bool _agreedToTerms = false;
 
@@ -42,6 +43,7 @@ class _ContractGateScreenState extends State<ContractGateScreen> {
   @override
   void dispose() {
     _signatureController.dispose();
+    _contractScrollController.dispose();
     super.dispose();
   }
 
@@ -78,13 +80,16 @@ class _ContractGateScreenState extends State<ContractGateScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Aspectos Legais'),
-        backgroundColor: Colors.white,
+        title: Text('Aspectos Legais', style: theme.textTheme.titleLarge),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        actions: const [LogoutButton(color: AppColors.primaryBlue)],
+        actions: const [LogoutButton(color: AppColors.primary)],
       ),
       body: Consumer<ContractProvider>(
         builder: (context, provider, child) {
@@ -99,101 +104,135 @@ class _ContractGateScreenState extends State<ContractGateScreen> {
           final content = provider.latestContract?['content'] ?? 'Nenhum termo gerado.';
           final version = provider.latestContract?['version'] ?? 'V-?';
 
-          return Container(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Header Card ───────────────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.gavel_rounded, color: AppColors.primaryBlue, size: 28),
-                      const SizedBox(width: 10),
-                      Flexible(
-                        child: Text(
-                          'Contrato Autônomo - $version',
-                          style: Theme.of(context).textTheme.titleLarge,
+                      Row(
+                        children: [
+                          const Icon(Icons.gavel_rounded, color: Colors.white, size: 24),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Contrato Autônomo',
+                            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Versão do Termo: $version',
+                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // ── Contract Content ──────────────────────────────────────
+                Text('Termos de Adesão', style: theme.textTheme.titleLarge),
+                const SizedBox(height: 16),
+                Container(
+                  height: 300,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10))],
+                  ),
+                  child: Scrollbar(
+                    controller: _contractScrollController,
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      controller: _contractScrollController,
+                      child: Text(
+                        content,
+                        style: const TextStyle(height: 1.6, color: AppColors.textSecondary, fontSize: 14),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // ── Disclaimer Checkbox ───────────────────────────────────
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: _agreedToTerms ? AppColors.secondary.withOpacity(0.05) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _agreedToTerms ? AppColors.secondary.withOpacity(0.2) : const Color(0xFFF1F5F9)),
+                  ),
+                  child: CheckboxListTile(
+                    title: const Text(
+                      'Declaro estar ciente de minha autonomia profissional, isenta de vínculo empregatício ou subordinação.',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textPrimary),
+                    ),
+                    value: _agreedToTerms,
+                    activeColor: AppColors.secondary,
+                    onChanged: (val) => setState(() => _agreedToTerms = val ?? false),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // ── Signature Area ────────────────────────────────────────
+                Text('Assinatura Digital', style: theme.textTheme.titleLarge),
+                const SizedBox(height: 16),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      Signature(
+                        controller: _signatureController,
+                        height: 180,
+                        backgroundColor: Colors.white,
+                      ),
+                      Container(
+                        color: const Color(0xFFF8FAFC),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text('LIMPAR'),
+                              onPressed: () => _signatureController.clear(),
+                              style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Container(
-                    height: 280,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))
-                      ],
-                      border: Border.all(color: Colors.grey.shade200)
-                    ),
-                    child: SingleChildScrollView(
-                      child: Text(content, style: const TextStyle(height: 1.5, color: AppColors.textSecondary)),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryBlue.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: CheckboxListTile(
-                      title: const Text(
-                        'Declaro estar ciente de que atuo como autônomo, não havendo subordinação, horários fixos impostos ou exclusividade.',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                      ),
-                      value: _agreedToTerms,
-                      activeColor: AppColors.primaryGreen,
-                      onChanged: (val) {
-                        setState(() => _agreedToTerms = val ?? false);
-                      },
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text('Sua Assinatura Digital:', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryBlue)),
-                  const SizedBox(height: 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
-                      border: Border.all(color: Colors.grey.shade300, width: 2)
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Signature(
-                      controller: _signatureController,
-                      height: 160,
-                      backgroundColor: Colors.white,
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      icon: const Icon(Icons.delete_outline, size: 18),
-                      label: const Text('Limpar traços'),
-                      style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
-                      onPressed: () => _signatureController.clear(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton.icon(
-                    onPressed: provider.isLoading ? null : _submitAcceptance,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryGreen,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      elevation: 2,
-                    ),
-                    icon: provider.isLoading ? const SizedBox() : const Icon(Icons.check_circle_outline),
-                    label: provider.isLoading 
-                      ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                ),
+                const SizedBox(height: 48),
+
+                // ── Submit Button ─────────────────────────────────────────
+                ElevatedButton(
+                  onPressed: provider.isLoading ? null : _submitAcceptance,
+                  child: provider.isLoading
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : const Text('ASSINAR E FIRMAR CONTRATO'),
-                  )
-                ],
-              ),
+                ),
+                const SizedBox(height: 40),
+              ],
             ),
           );
         },

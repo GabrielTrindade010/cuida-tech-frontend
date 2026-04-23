@@ -29,82 +29,149 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = context.watch<AuthProvider>().isLoading;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.health_and_safety, size: 80, color: Colors.white),
-                const SizedBox(height: 10),
-                const Text(
-                  'Cuida Tech',
-                  style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2),
-                ),
-                const Text(
-                  'Portal do Prestador Autônomo',
-                  style: TextStyle(fontSize: 16, color: Colors.white70),
-                ),
-                const SizedBox(height: 40),
-                Card(
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
+      backgroundColor: AppColors.background,
+      body: Stack(
+        children: [
+          // Background Decorative Elements
+          Positioned(
+            top: -100,
+            right: -50,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.accent.withOpacity(0.05),
+              ),
+            ),
+          ),
+          
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Logo & Brand
+                  Center(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('Entrar', style: Theme.of(context).textTheme.headlineMedium),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                          child: const Icon(Icons.health_and_safety_rounded, size: 48, color: Colors.white),
+                        ),
                         const SizedBox(height: 24),
-                        TextField(
-                          controller: _emailCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'E-mail',
-                            prefixIcon: Icon(Icons.email_outlined, color: AppColors.primaryBlue),
-                          ),
-                          keyboardType: TextInputType.emailAddress,
+                        Text(
+                          'Cuida Tech',
+                          style: theme.textTheme.headlineLarge,
                         ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _pwdCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Senha',
-                            prefixIcon: Icon(Icons.lock_outline, color: AppColors.primaryBlue),
-                          ),
-                          obscureText: true,
-                        ),
-                        const SizedBox(height: 32),
-                        ElevatedButton(
-                          onPressed: isLoading ? null : _doLogin,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: isLoading
-                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                              : const Text('ACESSAR', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Portal do Prestador Autônomo',
+                          style: theme.textTheme.bodyMedium,
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                    );
-                  },
-                  child: const Text('Quero ser um prestador Cuida Tech', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                )
-              ],
+                  
+                  const SizedBox(height: 48),
+                  
+                  // Login Form
+                  Text('Entrar', style: theme.textTheme.headlineMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Bem-vindo de volta! Use suas credenciais para acessar sua conta.',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  TextField(
+                    controller: _emailCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Seu e-mail',
+                      prefixIcon: Icon(Icons.mail_outline_rounded),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  TextField(
+                    controller: _pwdCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Sua senha',
+                      prefixIcon: Icon(Icons.lock_open_rounded),
+                    ),
+                    obscureText: true,
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {},
+                      child: Text(
+                        'Esqueceu a senha?',
+                        style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  ElevatedButton(
+                    onPressed: isLoading ? null : _doLogin,
+                    child: isLoading
+                        ? const SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text('ACESSAR CONTA'),
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Register Redirect
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Ainda não tem conta?',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                          );
+                        },
+                        child: Text(
+                          'Cadastre-se',
+                          style: TextStyle(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

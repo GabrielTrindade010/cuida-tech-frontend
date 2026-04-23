@@ -3,7 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import '../../core/theme/app_theme.dart';
+import '../../providers/availability_provider.dart';
+import '../../providers/contract_provider.dart';
 import '../availability/availability_screen.dart';
+import '../availability/my_offers_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +22,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadUserName();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AvailabilityProvider>().fetchMyOffers();
+      context.read<ContractProvider>().fetchLatestContract();
+    });
   }
 
   Future<void> _loadUserName() async {
@@ -32,29 +39,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+    final greeting = hour < 12 ? 'Bom dia,' : hour < 18 ? 'Boa tarde,' : 'Boa noite,';
+
+    final availabilityProvider = context.watch<AvailabilityProvider>();
+    final contractProvider = context.watch<ContractProvider>();
+
+    final int pendingCount = availabilityProvider.myOffers.where((o) => o['status'] == 'PENDING').length;
+    final int confirmedCount = availabilityProvider.myOffers.where((o) => o['status'] == 'ACCEPTED').length;
+    final String contractVersion = contractProvider.latestContract?['version'] ?? 'V1.0';
+    
+    final bool isAnyLoading = contractProvider.isLoading || availabilityProvider.isLoadingOffers;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
-          // Header Gradient
+          // ── Premium Modern Header ──────────────────────────────────────────
           SliverToBoxAdapter(
             child: Container(
+              width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: AppColors.primaryGradient,
                 borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(32),
-                  bottomRight: Radius.circular(32),
+                  bottomLeft: Radius.circular(40),
                 ),
               ),
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 24,
-                left: 24,
-                right: 24,
-                bottom: 32,
-              ),
+              padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 20, 24, 40),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -64,52 +76,40 @@ class _HomeScreenState extends State<HomeScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(greeting,
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 16)),
                           Text(
-                            _userName.isEmpty ? 'Prestador' : _userName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            '$greeting ${_userName.split(' ')[0]}',
+                            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5),
                           ),
                         ],
                       ),
                       Container(
-                        width: 52,
-                        height: 52,
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
                         ),
-                        child: const Icon(Icons.health_and_safety,
-                            color: Colors.white, size: 28),
+                        child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
                       )
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
+                  // Status Badge
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white24),
+                      color: AppColors.secondary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(100),
+                      border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
                     ),
-                    child: const Row(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.check_circle_outline,
-                            color: Colors.white, size: 20),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Contrato assinado · Autonomia ativa',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500),
-                          ),
+                        const Icon(Icons.verified_user_rounded, color: AppColors.secondary, size: 18),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'PRESTADOR ATIVO',
+                          style: TextStyle(color: AppColors.secondary, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.0),
                         ),
                       ],
                     ),
@@ -119,42 +119,28 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Quick Actions
-          const SliverToBoxAdapter(child: SizedBox(height: 28)),
+          // ── Quick Actions Grid ────────────────────────────────────────────
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text('Ações Rápidas',
-                  style: Theme.of(context).textTheme.titleLarge),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 children: [
                   Expanded(
                     child: _QuickActionCard(
-                      icon: Icons.calendar_month_rounded,
-                      label: 'Oferecer Plantão',
-                      color: AppColors.primaryBlue,
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => const AvailabilityScreen()));
-                      },
+                      icon: Icons.add_task_rounded,
+                      label: 'Ofertar\nPlantão',
+                      color: AppColors.primary,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AvailabilityScreen())),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: _QuickActionCard(
                       icon: Icons.history_rounded,
-                      label: 'Minhas Ofertas',
-                      color: AppColors.primaryGreen,
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(
-                            builder: (_) => const AvailabilityScreen()));
-                      },
+                      label: 'Ver Minhas\nOfertas',
+                      color: AppColors.accent,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyOffersScreen())),
                     ),
                   ),
                 ],
@@ -162,46 +148,57 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Status Cards
-          const SliverToBoxAdapter(child: SizedBox(height: 28)),
+          // ── Summary Section ────────────────────────────────────────────────
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text('Resumo de Atividades',
-                  style: Theme.of(context).textTheme.titleLarge),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Text('Resumo de Atividades', style: theme.textTheme.titleLarge),
+                  const Spacer(),
+                  Icon(Icons.tune_rounded, size: 20, color: Colors.grey.shade400),
+                ],
+              ),
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 16)),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
-                  _StatusCard(
-                    icon: Icons.pending_actions_rounded,
-                    title: 'Oferta Pendente',
-                    subtitle: 'Aguardando análise da central',
+                  _SummaryItem(
+                    icon: Icons.hourglass_empty_rounded,
+                    title: 'Ofertas Pendentes',
+                    value: '$pendingCount',
                     color: Colors.orange,
+                    isLoading: isAnyLoading,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyOffersScreen(initialFilter: 'PENDING'))),
                   ),
                   const SizedBox(height: 12),
-                  _StatusCard(
-                    icon: Icons.check_circle_rounded,
-                    title: 'Plantão Confirmado',
-                    subtitle: 'Você tem 1 plantão aceito esta semana',
-                    color: AppColors.primaryGreen,
+                  _SummaryItem(
+                    icon: Icons.check_circle_outline_rounded,
+                    title: 'Serviços Confirmados',
+                    value: '$confirmedCount',
+                    color: AppColors.secondary,
+                    isLoading: isAnyLoading,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyOffersScreen(initialFilter: 'ACCEPTED'))),
                   ),
                   const SizedBox(height: 12),
-                  _StatusCard(
-                    icon: Icons.gavel_rounded,
-                    title: 'Contrato Jurídico',
-                    subtitle: 'v1.0.0 · Assinado e válido',
-                    color: AppColors.primaryBlue,
+                  _SummaryItem(
+                    icon: Icons.description_outlined,
+                    title: 'Contrato Digital',
+                    value: contractVersion,
+                    color: AppColors.primary,
+                    isLoading: isAnyLoading,
+                    onTap: () {},
                   ),
                 ],
               ),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
       ),
     );
@@ -214,11 +211,49 @@ class _QuickActionCard extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
 
-  const _QuickActionCard(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap});
+  const _QuickActionCard({required this.icon, required this.label, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 160,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 20, offset: const Offset(0, 10)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const Spacer(),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, height: 1.2, color: AppColors.textPrimary)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final Color color;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _SummaryItem({required this.icon, required this.title, required this.value, required this.color, required this.isLoading, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -228,96 +263,22 @@ class _QuickActionCard extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-                color: color.withOpacity(0.15),
-                blurRadius: 12,
-                offset: const Offset(0, 4))
-          ],
-          border: Border.all(color: Colors.grey.shade100),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 26),
-            ),
-            const SizedBox(height: 16),
-            Text(label,
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textDark,
-                    fontSize: 14)),
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 16),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.textPrimary)),
+            const Spacer(),
+            isLoading 
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : Text(value, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: color)),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1), size: 20),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatusCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-
-  const _StatusCard(
-      {required this.icon,
-      required this.title,
-      required this.subtitle,
-      required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: AppColors.textDark)),
-                const SizedBox(height: 2),
-                Text(subtitle,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 12)),
-              ],
-            ),
-          ),
-          Icon(Icons.arrow_forward_ios_rounded,
-              size: 14, color: Colors.grey.shade400),
-        ],
       ),
     );
   }
