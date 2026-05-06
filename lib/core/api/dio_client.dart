@@ -5,9 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class DioClient {
   static String get _localBaseUrl {
-    if (kIsWeb) return 'http://localhost:3000/api';
-    if (Platform.isAndroid) return 'http://192.168.0.14:3000/api'; // Android Emulator MUST use 10.0.2.2
-    return 'http://localhost:3000/api'; // Windows / iOS Simulator
+    if (kIsWeb) return 'https://cuida-tech-backend.onrender.com/api';
+    if (Platform.isAndroid) return 'https://cuida-tech-backend.onrender.com/api'; // Android Emulator
+    return 'https://cuida-tech-backend.onrender.com/api';
   }
 
   static final Dio _dio = Dio(BaseOptions(

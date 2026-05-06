@@ -27,13 +27,8 @@ class AuthGate extends StatelessWidget {
         }
 
         if (auth.isAuthenticated) {
-          // ADMIN bypasses everything
-          if (auth.role == 'ADMIN') {
-            return const AdminPanelScreen();
-          }
-
-          // Se o cadastro estiver incompleto, redireciona para o Registro
-          if (auth.registrationStep < 5) {
+          // Se o cadastro estiver incompleto, redireciona para o Registro (exceto Admin)
+          if (auth.role != 'ADMIN' && auth.registrationStep < 5) {
             return const RegisterScreen();
           }
 

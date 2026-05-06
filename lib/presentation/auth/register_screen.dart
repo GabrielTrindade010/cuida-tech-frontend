@@ -45,7 +45,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _emailCtrl.text   = data['email'] ?? '';
         _docCtrl.text     = data['document'] ?? '';
         _phoneCtrl.text   = data['phone'] ?? '';
-        _category         = data['category'];
+        if (data['category'] != null) {
+          _selectedCategories.clear();
+          _selectedCategories.addAll((data['category'] as String).split(','));
+        }
         _profRegCtrl.text = data['professionalRegister'] ?? '';
         _cepCtrl.text          = data['cep'] ?? '';
         _streetCtrl.text       = data['street'] ?? '';
@@ -70,9 +73,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // ── Step 2: Especialidade ───────────────────────────────────────────────
   final _step2Key    = GlobalKey<FormState>();
-  String? _category;
+  final List<String> _selectedCategories = [];
   final _profRegCtrl = TextEditingController();
-  final List<String> _categories = ['Enfermeiro(a)', 'Técnico(a) em Enfermagem', 'Cuidador(a) de Idosos', 'Fisioterapeuta'];
+  final List<String> _categories = [
+    'Cuidador(a) de Idosos',
+    'Técnico(a) em Enfermagem',
+    'Auxiliar de Enfermagem',
+    'Enfermeiro(a)',
+    'Fisioterapeuta',
+    'Fonoaudiólogo(a)'
+  ];
 
   // ── Step 3: Endereço ───────────────────────────────────────────────────
   final _step3Key        = GlobalKey<FormState>();
@@ -86,7 +96,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _loadingCep        = false;
   String? _cepError;
 
-  // ── Step 4: Selfie ────────────────────────────────────────────────────
+  // ── Step 4: Identidade ───────────────────────────────────────────────
+  String? _docFrontPath;
+  String? _docBackPath;
   String? _selfiePath;
 
   // ── Step 5: Contrato ──────────────────────────────────────────────────
@@ -131,10 +143,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         break;
 
       case 1:
+        if (_selectedCategories.isEmpty) {
+          _showSnack('Selecione pelo menos uma categoria.', isError: true);
+          return;
+        }
         valid = _step2Key.currentState!.validate();
         if (valid) {
           final success = await auth.updateRegistrationStep({
-            'category': _category,
+            'category': _selectedCategories.join(','),
             'professionalRegister': _profRegCtrl.text.trim(),
             'registrationStep': 2,
           });
@@ -156,10 +172,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
         break;
 
       case 3:
-        if (_selfiePath == null) { _showSnack('Tire a selfie com seu documento.', isError: true); return; }
-        final url = await auth.uploadFile(_selfiePath!);
-        if (url == null) { _showSnack(auth.errorMessage ?? 'Erro ao enviar foto.', isError: true); return; }
-        final success = await auth.updateRegistrationStep({'selfieUrl': url, 'registrationStep': 4});
+        if (_docFrontPath == null || _docBackPath == null || _selfiePath == null) {
+          _showSnack('Capture todas as fotos (Frente, Verso e Selfie).', isError: true);
+          return;
+        }
+        
+        final urlFront = await auth.uploadFile(_docFrontPath!);
+        final urlBack = await auth.uploadFile(_docBackPath!);
+        final urlSelfie = await auth.uploadFile(_selfiePath!);
+
+        if (urlFront == null || urlBack == null || urlSelfie == null) {
+          _showSnack(auth.errorMessage ?? 'Erro ao enviar fotos.', isError: true);
+          return;
+        }
+
+        final success = await auth.updateRegistrationStep({
+          'documentFrontUrl': urlFront,
+          'documentBackUrl': urlBack,
+          'selfieUrl': urlSelfie,
+          'registrationStep': 4
+        });
+        
         if (success) valid = true;
         else { _showSnack(auth.errorMessage ?? 'Erro ao salvar progresso.', isError: true); return; }
         break;
@@ -180,12 +213,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _pageCtrl.previousPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
   }
 
-  Future<void> _takeSelfie() async {
+  Future<void> _takePhoto(String type) async {
     final result = await Navigator.push<String?>(
       context,
-      MaterialPageRoute(builder: (_) => const LivenessCameraScreen()),
+      MaterialPageRoute(
+        builder: (_) => type == 'SELFIE' ? const LivenessCameraScreen() : TakePictureScreen(documentType: type),
+      ),
     );
-    if (result != null) setState(() => _selfiePath = result);
+    if (result != null) {
+      setState(() {
+        if (type == 'RG_FRENTE') _docFrontPath = result;
+        if (type == 'RG_VERSO') _docBackPath = result;
+        if (type == 'SELFIE') _selfiePath = result;
+      });
+    }
   }
 
   Future<void> _doRegister() async {
@@ -351,15 +392,54 @@ class _RegisterScreenState extends State<RegisterScreen> {
     child: Form(
       key: _step2Key,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _stepInfo('Selecione sua principal categoria de atuação.'),
-        DropdownButtonFormField<String>(
-          value: _category, decoration: _dec('Especialidade', Icons.psychology_outlined),
-          items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-          onChanged: (v) => setState(() => _category = v),
-          validator: (v) => v == null ? 'Obrigatório' : null,
+        _stepInfo('Selecione suas categorias de atuação (múltipla escolha).'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 0,
+          children: _categories.map((cat) {
+            final isSelected = _selectedCategories.contains(cat);
+            return FilterChip(
+              label: Text(cat),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedCategories.add(cat);
+                  } else {
+                    _selectedCategories.remove(cat);
+                  }
+                });
+              },
+              selectedColor: AppColors.primary.withOpacity(0.2),
+              checkmarkColor: AppColors.primary,
+              labelStyle: TextStyle(
+                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+                ),
+              ),
+            );
+          }).toList(),
         ),
-        const SizedBox(height: 16),
-        TextFormField(controller: _profRegCtrl, textCapitalization: TextCapitalization.characters, validator: (v) => (v ?? '').isEmpty ? 'Obrigatório' : null, decoration: _dec('Registro Profissional', Icons.assignment_ind_outlined, hint: 'Ex: COREN-SP 123.456')),
+        const SizedBox(height: 24),
+        TextFormField(
+          controller: _profRegCtrl,
+          textCapitalization: TextCapitalization.characters,
+          validator: (v) {
+            // Se selecionou categorias técnicas, o registro é obrigatório
+            bool needsReg = _selectedCategories.any((c) => 
+              c.contains('Técnico') || c.contains('Auxiliar') || c.contains('Enfermeiro') || c.contains('Fisio')
+            );
+            if (needsReg && (v ?? '').isEmpty) return 'Registro obrigatório para estas categorias';
+            return null;
+          },
+          decoration: _dec('Registro Profissional', Icons.assignment_ind_outlined, hint: 'Ex: COREN-SP 123.456'),
+        ),
         const SizedBox(height: 32),
         _infoBox('Seu registro será validado por nossa equipe de auditoria.'),
       ]),
@@ -400,30 +480,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildStep4() => _stepWrapper(
     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _stepInfo('Precisamos validar sua identidade. Tire uma selfie segurando seu documento.'),
-      const SizedBox(height: 24),
-      GestureDetector(
-        onTap: _takeSelfie,
-        child: Container(
-          height: 320,
-          decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: _selfiePath != null ? AppColors.secondary : const Color(0xFFE2E8F0), width: 2),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
-          ),
-          child: _selfiePath != null
-              ? ClipRRect(borderRadius: BorderRadius.circular(22), child: Image.file(File(_selfiePath!), fit: BoxFit.cover))
-              : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.face_retouching_natural_rounded, size: 64, color: Color(0xFFCBD5E1)),
-                  const SizedBox(height: 16),
-                  const Text('Abrir Câmera de Validação', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
-                ]),
-        ),
+      _stepInfo('Precisamos validar sua identidade de acordo com os padrões de compliance.'),
+      const SizedBox(height: 16),
+      
+      _photoSlot(
+        label: 'Documento (FRENTE)',
+        path: _docFrontPath,
+        onTap: () => _takePhoto('RG_FRENTE'),
+        icon: Icons.badge_outlined,
       ),
+      const SizedBox(height: 16),
+      
+      _photoSlot(
+        label: 'Documento (VERSO)',
+        path: _docBackPath,
+        onTap: () => _takePhoto('RG_VERSO'),
+        icon: Icons.contact_page_outlined,
+      ),
+      const SizedBox(height: 16),
+      
+      _photoSlot(
+        label: 'Selfie com Documento',
+        path: _selfiePath,
+        onTap: () => _takePhoto('SELFIE'),
+        icon: Icons.face_retouching_natural_rounded,
+      ),
+      
       const SizedBox(height: 24),
-      _infoBox('Certifique-se de que o documento esteja legível ao lado do seu rosto.'),
+      _infoBox('Utilize um ambiente iluminado e garanta que os dados estejam legíveis.'),
     ]),
   );
+
+  Widget _photoSlot({required String label, required String? path, required VoidCallback onTap, required IconData icon}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 140,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: path != null ? AppColors.secondary : const Color(0xFFE2E8F0), width: 2),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+        ),
+        child: path != null
+            ? ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.file(File(path), fit: BoxFit.cover, width: double.infinity))
+            : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(icon, size: 40, color: const Color(0xFFCBD5E1)),
+                const SizedBox(height: 12),
+                Text(label, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary, fontSize: 13)),
+              ]),
+      ),
+    );
+  }
 
   Widget _buildStep5() => _stepWrapper(
     child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -471,10 +579,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // Validators (Dummy for briefness, should be real logic)
   String? _vName(String? v) => (v ?? '').length < 3 ? 'Nome muito curto' : null;
-  String? _vEmail(String? v) => !(v ?? '').contains('@') ? 'E-mail inválido' : null;
+  String? _vEmail(String? v) {
+    final email = v ?? '';
+    if (email.isEmpty) return 'E-mail obrigatório';
+    final regExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!regExp.hasMatch(email)) return 'E-mail em formato inválido';
+    return null;
+  }
+
   String? _vDoc(String? v) => (v ?? '').isEmpty ? 'Obrigatório' : null;
   String? _vPhone(String? v) => (v ?? '').length < 10 ? 'Telefone inválido' : null;
-  String? _vPwd(String? v) => (v ?? '').length < 6 ? 'Mínimo 6 caracteres' : null;
+
+  String? _vPwd(String? v) {
+    final pwd = v ?? '';
+    if (pwd.length < 8) return 'A senha deve ter pelo menos 8 caracteres';
+    if (!pwd.contains(RegExp(r'[A-Z]'))) return 'Deve conter pelo menos uma letra maiúscula';
+    if (!pwd.contains(RegExp(r'[0-9]'))) return 'Deve conter pelo menos um número';
+    if (!pwd.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) return 'Deve conter um caractere especial';
+    return null;
+  }
 
   String _contractText() => 'CONTRATO DE PRESTAÇÃO DE SERVIÇOS...\n\nPor meio deste, o prestador concorda em atuar de forma autônoma...';
 }

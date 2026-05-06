@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/formatters.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -12,11 +14,11 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailCtrl = TextEditingController();
+  final _cpfCtrl = TextEditingController();
   final _pwdCtrl = TextEditingController();
 
   Future<void> _doLogin() async {
-    final success = await context.read<AuthProvider>().login(_emailCtrl.text, _pwdCtrl.text);
+    final success = await context.read<AuthProvider>().login(_cpfCtrl.text, _pwdCtrl.text);
     if (!success && mounted) {
       final msg = context.read<AuthProvider>().errorMessage ?? 'Falha no login';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -95,12 +97,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 32),
                   
                   TextField(
-                    controller: _emailCtrl,
+                    controller: _cpfCtrl,
                     decoration: const InputDecoration(
-                      hintText: 'Seu e-mail',
-                      prefixIcon: Icon(Icons.mail_outline_rounded),
+                      hintText: 'Seu CPF',
+                      prefixIcon: Icon(Icons.badge_outlined),
                     ),
-                    keyboardType: TextInputType.emailAddress,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      CpfInputFormatter(),
+                    ],
                   ),
                   
                   const SizedBox(height: 16),

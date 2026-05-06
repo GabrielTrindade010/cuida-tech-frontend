@@ -10,6 +10,9 @@ import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/contract_provider.dart';
 import 'providers/availability_provider.dart';
+import 'providers/offer_provider.dart';
+import 'providers/finance_provider.dart';
+import 'providers/admin_provider.dart';
 import 'presentation/auth/login_screen.dart';
 import 'presentation/auth/auth_gate.dart';
 import 'presentation/contract/contract_gate_screen.dart';
@@ -40,6 +43,9 @@ class CuidaTechApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()..checkSession()),
         ChangeNotifierProvider(create: (_) => ContractProvider()),
         ChangeNotifierProvider(create: (_) => AvailabilityProvider()),
+        ChangeNotifierProvider(create: (_) => OfferProvider()),
+        ChangeNotifierProvider(create: (_) => FinanceProvider()),
+        ChangeNotifierProvider(create: (_) => AdminProvider()),
       ],
       child: MaterialApp(
         title: 'Cuida Tech',

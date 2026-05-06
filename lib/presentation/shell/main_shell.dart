@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../providers/auth_provider.dart';
+import '../admin/admin_dashboard_screen.dart';
 import '../home/home_screen.dart';
 import '../availability/availability_screen.dart';
 import '../profile/profile_screen.dart';
@@ -14,18 +17,36 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    HomeScreen(),
-    AvailabilityScreen(),
-    ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    final auth = context.read<AuthProvider>();
+    if (auth.role == 'ADMIN') {
+      _currentIndex = 0; // Para admin só terá uma tela
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final authProv = context.watch<AuthProvider>();
+    final bool isAdmin = authProv.role == 'ADMIN';
+
+    if (isAdmin) {
+      return const Scaffold(
+        body: AdminDashboardScreen(),
+      );
+    }
+
+    final List<Widget> screens = [
+      const HomeScreen(),
+      const AvailabilityScreen(),
+      const ProfileScreen(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

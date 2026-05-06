@@ -56,13 +56,25 @@ class AuthProvider with ChangeNotifier {
 
     try {
       // O registro agora é apenas o Passo 1
-      await DioClient.instance.post('/users/register', data: {
+      final response = await DioClient.instance.post('/users/register', data: {
         'name': name,
         'email': email,
         'document': document,
         'phone': phone,
         'password': password,
       });
+
+      final token = response.data['token'];
+      final user = response.data;
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('jwt_token', token);
+      
+      _registrationStep = user['registrationStep'] ?? 1;
+      _status = user['status'] ?? 'INCOMPLETE';
+      _role = user['role'] ?? 'PRESTADOR';
+      _isAuthenticated = true;
+      
       return true;
     } on DioException catch (e) {
       _errorMessage = e.response?.data['message'] ?? 'Erro ao registrar conta.';
@@ -95,14 +107,14 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> login(String email, String password) async {
+  Future<bool> login(String document, String password) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final response = await DioClient.instance.post('/auth/login', data: {
-        'email': email,
+        'document': document,
         'password': password,
       });
 

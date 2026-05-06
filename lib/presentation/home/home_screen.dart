@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/providers/offer_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
@@ -7,6 +8,9 @@ import '../../providers/availability_provider.dart';
 import '../../providers/contract_provider.dart';
 import '../availability/availability_screen.dart';
 import '../availability/my_offers_screen.dart';
+import 'my_accepted_services_screen.dart';
+import 'finance_screen.dart';
+import 'provider_offer_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AvailabilityProvider>().fetchMyOffers();
       context.read<ContractProvider>().fetchLatestContract();
+      context.read<OfferProvider>().fetchAvailableOffers();
     });
   }
 
@@ -73,28 +78,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$greeting ${_userName.split(' ')[0]}',
-                            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5),
-                          ),
-                        ],
+                      const Text(
+                        'Cuida Tech',
+                        style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white.withOpacity(0.1)),
-                        ),
-                        child: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
-                      )
+                      IconButton(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Você não tem novas notificações.')));
+                        },
+                        icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 28),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 32),
-                  // Status Badge
+                  Text(
+                    '$greeting ${_userName.split(' ')[0]}',
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5),
+                  ),
+                  const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
@@ -137,12 +138,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: _QuickActionCard(
-                      icon: Icons.history_rounded,
-                      label: 'Ver Minhas\nOfertas',
-                      color: AppColors.accent,
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyOffersScreen())),
+                      icon: Icons.assignment_turned_in_outlined,
+                      label: 'Meus\nServiços',
+                      color: AppColors.secondary,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyAcceptedServicesScreen())),
                     ),
                   ),
+                ],
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _QuickActionCard(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'Financeiro\ne PIX',
+                      color: Colors.deepPurple,
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FinanceScreen())),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Spacer(),
                 ],
               ),
             ),
@@ -197,6 +218,44 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
+          ),
+
+          // ── Available Offers Section ───────────────────────────────────────────
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Text('Honorários Próximos', style: theme.textTheme.titleLarge),
+                  const Spacer(),
+                  const Icon(Icons.location_on_outlined, size: 18, color: AppColors.secondary),
+                  const SizedBox(width: 4),
+                  const Text('SP', style: TextStyle(color: AppColors.secondary, fontWeight: FontWeight.bold, fontSize: 13)),
+                ],
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          Consumer<OfferProvider>(
+            builder: (context, offerProv, _) {
+              if (offerProv.isLoading && offerProv.availableOffers.isEmpty) {
+                return const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())));
+              }
+              if (offerProv.availableOffers.isEmpty) {
+                return const SliverToBoxAdapter(
+                  child: Center(child: Padding(padding: EdgeInsets.all(32), child: Text('Nenhuma nova oferta no momento.', style: TextStyle(color: Colors.grey)))),
+                );
+              }
+              return SliverList(
+                delegate: SliverChildListDelegate(
+                  offerProv.availableOffers.map((offer) => InkWell(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderOfferDetailsScreen(offer: offer))),
+                    child: _OfferCard(offer: offer),
+                  )).toList(),
+                ),
+              );
+            },
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
@@ -283,3 +342,92 @@ class _SummaryItem extends StatelessWidget {
     );
   }
 }
+
+class _OfferCard extends StatelessWidget {
+  final dynamic offer;
+
+  const _OfferCard({required this.offer});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 20, offset: const Offset(0, 10))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                  child: Text(offer['category'].split(',')[0], style: const TextStyle(color: AppColors.secondary, fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+                const Spacer(),
+                Text('R\$ ${offer['price']}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.primary)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(offer['title'], style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.location_on_outlined, size: 16, color: Colors.grey),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    '${offer['address']}, ${offer['neighborhood']}\n${offer['city']} - ${offer['state']}',
+                    style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final success = await context.read<OfferProvider>().refuseOffer(offer['id']);
+                      if (success && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oferta removida.')));
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      side: const BorderSide(color: Color(0xFFFFEBEE)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('RECUSAR'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final success = await context.read<OfferProvider>().acceptOffer(offer['id']);
+                      if (success && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Oferta aceita com sucesso!')));
+                        context.read<AvailabilityProvider>().fetchMyOffers();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                    child: const Text('ACEITAR'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
